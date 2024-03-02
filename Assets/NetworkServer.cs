@@ -1,6 +1,4 @@
-using System;
 using UnityEngine;
-using UnityEngine.Assertions;
 using Unity.Collections;
 using Unity.Networking.Transport;
 using System.Text;
@@ -118,7 +116,7 @@ public class NetworkServer : MonoBehaviour
                         streamReader.ReadBytes(buffer);
                         byte[] byteBuffer = buffer.ToArray();
                         string msg = Encoding.Unicode.GetString(byteBuffer);
-                        ProcessReceivedMsg(msg);
+                        ProcessReceivedMsg(msg, networkConnections[i]);
                         buffer.Dispose();
                         break;
                     case NetworkEvent.Type.Disconnect:
@@ -151,15 +149,19 @@ public class NetworkServer : MonoBehaviour
         return true;
     }
 
-    private void ProcessReceivedMsg(string msg)
+    private void ProcessReceivedMsg(string msg, NetworkConnection networkConnection)
     {
-        Debug.Log("Msg received = " + msg);
+        Debug.Log("Msg received = " + msg + "," + networkConnection.InternalId);
 
-        if (msg.StartsWith("0"))
+        if (msg.StartsWith(Signifiers.RegisterAccountSignifier))
         {
-           AccountsManager.Instance.CheckLoginCredentials(msg);
+            AccountsManager.Instance.RegisterNewAccountCredentials(msg, networkConnection);
         }
-        
+
+        if (msg.StartsWith(Signifiers.LoginAccountSignifier))
+        {
+            AccountsManager.Instance.CheckLoginCredentials(msg, networkConnection);
+        }
     }
 
     public void SendMessageToClient(string msg, NetworkConnection networkConnection)

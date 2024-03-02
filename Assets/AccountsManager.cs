@@ -1,18 +1,22 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using JetBrains.Annotations;
-using TMPro;
+using Unity.Networking.Transport;
 using UnityEngine;
+
+public static class Signifiers
+{
+    public const string RegisterAccountSignifier = "0";
+    public const string LoginAccountSignifier = "1";
+    public const string successfulLoginSignifier = "2";
+}
 
 public class AccountsManager : MonoBehaviour
 {
     public static AccountsManager Instance { get; private set; }
 
     private const string accountDataSignifier = "0";
-    private List<string> LoggedinAccounts = new List<string>();
-    private GameObject verticalLayout;
-
+    //private List<string> LoggedinAccounts = new List<string>();
+   //private GameObject verticalLayout;
+    
     [SerializeField] private GameObject accountNameText;
 
     private void Awake()
@@ -29,60 +33,98 @@ public class AccountsManager : MonoBehaviour
 
     private void Start()
     {
-        verticalLayout = GameObject.Find("VerticalLayout");
+        //verticalLayout = GameObject.Find("VerticalLayout");
     }
 
-    public void CreateNewAccountCredentials(string receivedMessage)
+    private bool CheckForExistingAccount(string username)
+    {
+        if (!File.Exists("AccountsData.txt"))
+        {
+            return false;
+        }
+
+        string currentLine;
+
+        using (StreamReader sReader = new StreamReader("AccountsData.txt"))
+        {
+            string[] currentAccount;
+
+            while ((currentLine = sReader.ReadLine()) != null)
+            {
+                currentAccount = currentLine.Split(",");
+
+                if (username == currentAccount[1])
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void RegisterNewAccountCredentials(string receivedMessage, NetworkConnection connectionID)
     {
         string[] newAccountCredentials;
         newAccountCredentials = receivedMessage.Split(",");
 
-        using (StreamWriter sWriter = new StreamWriter("AccountsData.txt", true))
+        if (!CheckForExistingAccount(newAccountCredentials[1]))
         {
-            sWriter.WriteLine(accountDataSignifier + "," + newAccountCredentials[1] + "," + newAccountCredentials[2]);
+            using (StreamWriter sWriter = new StreamWriter("AccountsData.txt", true))
+            {
+                sWriter.WriteLine(accountDataSignifier + "," + newAccountCredentials[1] + "," + newAccountCredentials[2]);
+            }
+        }
+        else
+        {
+            NetworkServer.Instance.SendMessageToClient("Username is taken.", connectionID);
         }
     }
 
-    public void CheckLoginCredentials(string receivedMessage)
+    public void CheckLoginCredentials(string receivedMessage, NetworkConnection connectionID)
     {
-        string[] clientMessage;
-        string currentLine = "";
-        clientMessage = receivedMessage.Split(",");
+        bool accountExists = false;
+        string[] existingAccountCredentials;
+        existingAccountCredentials = receivedMessage.Split(",");
 
-        using (StreamReader sReader = new StreamReader("AccountsData.txt"))
+        if (CheckForExistingAccount(existingAccountCredentials[1]))
         {
-            while ((currentLine = sReader.ReadLine()) != null)
+            using (StreamReader sReader = new StreamReader("AccountsData.txt"))
             {
-                string[] loginCredentials;
-                loginCredentials = currentLine.Split(",");
+                string currentLine = "";
+                
+                while ((currentLine = sReader.ReadLine()) != null)
+                {
+                    string[] currentAccount = currentLine.Split(",");
 
-                Debug.Log("Test 1");
-
-               if (loginCredentials[1] == clientMessage[1] && loginCredentials[2] == clientMessage[2])
-               {
-                   Debug.Log("Test 2");
-
-                    LoggedinAccounts.Add(loginCredentials[1]);
-                    foreach (var account in LoggedinAccounts)
+                    if (existingAccountCredentials[2] == currentAccount[2])
                     {
-                        Debug.Log($"{account} is Logged in.");
+                        accountExists = true;
+                        break;
                     }
-                    DisplayLoggedInAccounts();
-                    break;
-               }
+                }
             }
+        }
+
+        if (accountExists)
+        {
+            NetworkServer.Instance.SendMessageToClient($"Welcome Back, {existingAccountCredentials[1]}!", connectionID);
+            NetworkServer.Instance.SendMessageToClient(Signifiers.successfulLoginSignifier, connectionID);
+        }
+        else
+        {
+            NetworkServer.Instance.SendMessageToClient("Username/Password is incorrect or does not exist.", connectionID);
         }
     }
 
-    private void DisplayLoggedInAccounts()
-    {
-        if (LoggedinAccounts != null)
-        {
-            foreach (string account in LoggedinAccounts)
-            {
-                GameObject userNameText = Instantiate(accountNameText, verticalLayout.transform);
-                userNameText.GetComponent<TMP_Text>().text = account;
-            }
-        }
-    }
+    //private void DisplayLoggedInAccounts()
+    //{
+    //    if (LoggedinAccounts != null)
+    //    {
+    //        foreach (string account in LoggedinAccounts)
+    //        {
+    //            GameObject userNameText = Instantiate(accountNameText, verticalLayout.transform);
+    //            userNameText.GetComponent<TMP_Text>().text = account;
+    //        }
+    //    }
+    //}
 }
