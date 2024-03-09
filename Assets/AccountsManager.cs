@@ -2,22 +2,11 @@ using System.IO;
 using Unity.Networking.Transport;
 using UnityEngine;
 
-public static class Signifiers
-{
-    public const string RegisterAccountSignifier = "0";
-    public const string LoginAccountSignifier = "1";
-    public const string successfulLoginSignifier = "2";
-}
-
 public class AccountsManager : MonoBehaviour
 {
     public static AccountsManager Instance { get; private set; }
 
     private const string accountDataSignifier = "0";
-    //private List<string> LoggedinAccounts = new List<string>();
-   //private GameObject verticalLayout;
-    
-    [SerializeField] private GameObject accountNameText;
 
     private void Awake()
     {
@@ -29,11 +18,6 @@ public class AccountsManager : MonoBehaviour
         {
             Instance = this;
         }
-    }
-
-    private void Start()
-    {
-        //verticalLayout = GameObject.Find("VerticalLayout");
     }
 
     private bool CheckForExistingAccount(string username)
@@ -76,13 +60,12 @@ public class AccountsManager : MonoBehaviour
         }
         else
         {
-            NetworkServer.Instance.SendMessageToClient("Username is taken.", connectionID);
+            NetworkServerProcessing.Instance.SendMessageToClient("Username is taken.", connectionID);
         }
     }
 
     public void CheckLoginCredentials(string receivedMessage, NetworkConnection connectionID)
     {
-        bool accountExists = false;
         string[] existingAccountCredentials;
         existingAccountCredentials = receivedMessage.Split(",");
 
@@ -91,40 +74,22 @@ public class AccountsManager : MonoBehaviour
             using (StreamReader sReader = new StreamReader("AccountsData.txt"))
             {
                 string currentLine = "";
-                
+
                 while ((currentLine = sReader.ReadLine()) != null)
                 {
                     string[] currentAccount = currentLine.Split(",");
 
                     if (existingAccountCredentials[2] == currentAccount[2])
                     {
-                        accountExists = true;
-                        break;
+                        NetworkServerProcessing.Instance.SendMessageToClient($"Welcome Back, {existingAccountCredentials[1]}!", connectionID);
+                        NetworkServerProcessing.Instance.SendMessageToClient(Signifiers.successfulLoginSignifier, connectionID);
+                        Player player = new Player(existingAccountCredentials[1], connectionID);
+                        LobbyManager.Instance.activePlayers.Add(player);
+                        return;
                     }
                 }
             }
         }
-
-        if (accountExists)
-        {
-            NetworkServer.Instance.SendMessageToClient($"Welcome Back, {existingAccountCredentials[1]}!", connectionID);
-            NetworkServer.Instance.SendMessageToClient(Signifiers.successfulLoginSignifier, connectionID);
-        }
-        else
-        {
-            NetworkServer.Instance.SendMessageToClient("Username/Password is incorrect or does not exist.", connectionID);
-        }
+        NetworkServerProcessing.Instance.SendMessageToClient("Username/Password is incorrect or does not exist.", connectionID);
     }
-
-    //private void DisplayLoggedInAccounts()
-    //{
-    //    if (LoggedinAccounts != null)
-    //    {
-    //        foreach (string account in LoggedinAccounts)
-    //        {
-    //            GameObject userNameText = Instantiate(accountNameText, verticalLayout.transform);
-    //            userNameText.GetComponent<TMP_Text>().text = account;
-    //        }
-    //    }
-    //}
 }

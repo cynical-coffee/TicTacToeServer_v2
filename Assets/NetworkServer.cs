@@ -116,7 +116,7 @@ public class NetworkServer : MonoBehaviour
                         streamReader.ReadBytes(buffer);
                         byte[] byteBuffer = buffer.ToArray();
                         string msg = Encoding.Unicode.GetString(byteBuffer);
-                        ProcessReceivedMsg(msg, networkConnections[i]);
+                        NetworkServerProcessing.Instance.ProcessMessageFromClient(msg, networkConnections[i]);
                         buffer.Dispose();
                         break;
                     case NetworkEvent.Type.Disconnect:
@@ -149,21 +149,6 @@ public class NetworkServer : MonoBehaviour
         return true;
     }
 
-    private void ProcessReceivedMsg(string msg, NetworkConnection networkConnection)
-    {
-        Debug.Log("Msg received = " + msg + "," + networkConnection.InternalId);
-
-        if (msg.StartsWith(Signifiers.RegisterAccountSignifier))
-        {
-            AccountsManager.Instance.RegisterNewAccountCredentials(msg, networkConnection);
-        }
-
-        if (msg.StartsWith(Signifiers.LoginAccountSignifier))
-        {
-            AccountsManager.Instance.CheckLoginCredentials(msg, networkConnection);
-        }
-    }
-
     public void SendMessageToClient(string msg, NetworkConnection networkConnection)
     {
         byte[] msgAsByteArray = Encoding.Unicode.GetBytes(msg);
@@ -180,5 +165,4 @@ public class NetworkServer : MonoBehaviour
 
         buffer.Dispose();
     }
-
 }
