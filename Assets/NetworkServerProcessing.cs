@@ -1,68 +1,96 @@
-using Unity.Networking.Transport;
-using Unity.VisualScripting;
 using UnityEngine;
 
-public class NetworkServerProcessing : MonoBehaviour
+public static class NetworkServerProcessing
 {
-    public static NetworkServerProcessing Instance { get; private set; }
-
-    private NetworkServer networkServer;
-
-    private void Awake()
+    #region Send and Receive Data Functions
+    public static void ReceivedMessageFromClient(string msg, int clientConnectionID, TransportPipeline pipeline)
     {
-        if (Instance != null && Instance != this)
+        Debug.Log("Network msg received =  " + msg + ", from connection id = " + clientConnectionID + ", from pipeline = " + pipeline);
+
+        string[] csv = msg.Split(',');
+        int signifier = int.Parse(csv[0]);
+
+        if (signifier == ClientToServerSignifiers.RegisterAccount)
         {
-            Destroy(this);
+            AccountsManager.Instance.RegisterNewAccountCredentials(msg, clientConnectionID);
         }
-        else
+        else if (signifier == ClientToServerSignifiers.LoginAccount)
         {
-            Instance = this;
+            AccountsManager.Instance.CheckLoginCredentials(msg, clientConnectionID);
+        }
+        else if (signifier == ClientToServerSignifiers.createGameRoom)
+        {
+            LobbyManager.Instance.CreateGameRoom(msg, clientConnectionID);
+        }
+        else if (signifier == ClientToServerSignifiers.joinExistingRoom)
+        {
+            LobbyManager.Instance.CreateGameRoom(msg, clientConnectionID);
+        }
+        else if (signifier == ServerToClientSignifiers.logOut)
+        {
+            LobbyManager.Instance.LogOut(clientConnectionID);
         }
 
-        networkServer = FindObjectOfType<NetworkServer>();
+        //gameLogic.DoSomething();
+    }
+    public static void SendMessageToClient(string msg, int clientConnectionID, TransportPipeline pipeline)
+    {
+        networkServer.SendMessageToClient(msg, clientConnectionID, pipeline);
     }
 
-    public void ProcessMessageFromClient(string msg, NetworkConnection networkConnection)
+    #endregion
+
+    #region Connection Events
+
+    public static void ConnectionEvent(int clientConnectionID)
     {
-        Debug.Log("Msg received = " + msg + "," + networkConnection.InternalId);
-
-        if (msg.StartsWith(Signifiers.RegisterAccountSignifier))
-        {
-            AccountsManager.Instance.RegisterNewAccountCredentials(msg, networkConnection);
-        }
-
-        if (msg.StartsWith(Signifiers.LoginAccountSignifier))
-        {
-            AccountsManager.Instance.CheckLoginCredentials(msg, networkConnection);
-        }
-
-        if (msg.StartsWith(Signifiers.createGameRoomSignifier))
-        {
-            foreach (Player player in LobbyManager.Instance.activePlayers)
-            {
-                if (player.connection == networkConnection)
-                {
-                    LobbyManager.Instance.CreateGameRoom(msg, player, networkConnection);
-                }
-            }
-        }
-
-        if (msg.StartsWith(Signifiers.logOutSignifier))
-        {
-            LobbyManager.Instance.LogOut(networkConnection);
-        }
+        Debug.Log("Client connection, ID == " + clientConnectionID);
     }
-    public void SendMessageToClient(string msg, NetworkConnection networkConnection)
+    public static void DisconnectionEvent(int clientConnectionID)
     {
-        networkServer.SendMessageToClient(msg, networkConnection);
+        Debug.Log("Client disconnection, ID == " + clientConnectionID);
     }
+
+    #endregion
+
+    #region Setup
+    static NetworkServer networkServer;
+   // static GameLogic gameLogic;
+
+    public static void SetNetworkServer(NetworkServer NetworkServer)
+    {
+        networkServer = NetworkServer;
+    }
+    public static NetworkServer GetNetworkServer()
+    {
+        return networkServer;
+    }
+    //public static void SetGameLogic(GameLogic GameLogic)
+    //{
+    //    gameLogic = GameLogic;
+    //}
+
+    #endregion
 }
 
-public static class Signifiers
+#region Protocol Signifiers
+public static class ClientToServerSignifiers
 {
-    public const string RegisterAccountSignifier = "0";
-    public const string LoginAccountSignifier = "1";
-    public const string successfulLoginSignifier = "2";
-    public const string createGameRoomSignifier = "3";
-    public const string logOutSignifier = "4";
+    public const int RegisterAccount = 0;
+    public const int LoginAccount = 1;
+    public const int createGameRoom = 3;
+    public const int joinExistingRoom = 5;
 }
+
+public static class ServerToClientSignifiers
+{
+    public const int successfulLogin = 2;
+    public const int failedLogin = 5;
+    public const int failedToCreateRoom = 6;
+    public const int usernameTaken = 7;
+    public const int gameRoomFull = 8;
+    public const int leaveGameRoom = 1;
+    public const int logOut = 4;
+}
+
+#endregion

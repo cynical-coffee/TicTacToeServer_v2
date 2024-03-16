@@ -1,13 +1,12 @@
 using System.Collections.Generic;
-using Unity.Networking.Transport;
 using UnityEngine;
 
 public class Player
 {
     public string username;
-    public NetworkConnection connection;
+    public int connection;
 
-    public Player(string userName, NetworkConnection connectionID)
+    public Player(string userName, int connectionID)
     {
         username = userName;
         connection = connectionID;
@@ -63,34 +62,69 @@ public class LobbyManager : MonoBehaviour
         return false;
     }
 
-    public void CreateGameRoom(string receivedMessage, Player player, NetworkConnection connectionID)
+    public void CreateGameRoom(string receivedMessage, int connectionID)
     {
         string[] gameRoomName;
         gameRoomName = receivedMessage.Split(",");
 
-        if (!CheckForExistingRoom(gameRoomName[1]))
+        foreach (Player player in activePlayers)
         {
-            GameRoom gameRoom = new GameRoom(gameRoomName[1]);
-            gameRoom.currentPlayers.Add(player);
-            activeGameRooms.Add(gameRoom);
-            NetworkServerProcessing.Instance.SendMessageToClient(Signifiers.createGameRoomSignifier, connectionID);
-        }
-        else
-        {
-            NetworkServerProcessing.Instance.SendMessageToClient("Room Already Exists.", connectionID);
+            if (player.connection == connectionID)
+            {
+                if (!CheckForExistingRoom(gameRoomName[1]))
+                {
+                    GameRoom gameRoom = new GameRoom(gameRoomName[1]);
+                    gameRoom.currentPlayers.Add(player);
+                    activeGameRooms.Add(gameRoom);
+                    NetworkServerProcessing.SendMessageToClient(ClientToServerSignifiers.createGameRoom.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
+                }
+                else
+                {
+                    NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.failedToCreateRoom.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
+                }
+            }
         }
     }
 
-    public void LogOut(NetworkConnection connectionID)
+    public void JoinExistingGameRoom(string receivedMessage,  int connectionID)
+    {
+        string[] gameRoomName;
+        gameRoomName = receivedMessage.Split(",");
+        
+        foreach (Player player in activePlayers)
+        {
+            if (player.connection == connectionID)
+            {
+                if (CheckForExistingRoom(gameRoomName[1]))
+                {
+                    foreach (GameRoom gameRoom in activeGameRooms)
+                    {
+                        if (gameRoomName[1] == gameRoom.roomName)
+                        {
+                            if (gameRoom.currentPlayers.Count < 2)
+                            {
+                                gameRoom.currentPlayers.Add(player);
+                            }
+                            else
+                            {
+                                NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.gameRoomFull.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void LogOut(int connectionID)
     {
         for (int i = 0; i < activePlayers.Count; i++)
         {
             if (activePlayers[i].connection == connectionID)
             {
                 activePlayers.RemoveAt(i);
-                NetworkServerProcessing.Instance.SendMessageToClient(Signifiers.logOutSignifier + "Logged Out!", connectionID);
+                NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.logOut.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
             }
         }
     }
 }
-

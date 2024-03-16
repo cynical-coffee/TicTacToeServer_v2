@@ -1,5 +1,4 @@
 using System.IO;
-using Unity.Networking.Transport;
 using UnityEngine;
 
 public class AccountsManager : MonoBehaviour
@@ -46,7 +45,7 @@ public class AccountsManager : MonoBehaviour
         return false;
     }
 
-    public void RegisterNewAccountCredentials(string receivedMessage, NetworkConnection connectionID)
+    public void RegisterNewAccountCredentials(string receivedMessage, int connectionID)
     {
         string[] newAccountCredentials;
         newAccountCredentials = receivedMessage.Split(",");
@@ -60,11 +59,11 @@ public class AccountsManager : MonoBehaviour
         }
         else
         {
-            NetworkServerProcessing.Instance.SendMessageToClient("Username is taken.", connectionID);
+            NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.usernameTaken.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
         }
     }
 
-    public void CheckLoginCredentials(string receivedMessage, NetworkConnection connectionID)
+    public void CheckLoginCredentials(string receivedMessage, int connectionID)
     {
         string[] existingAccountCredentials;
         existingAccountCredentials = receivedMessage.Split(",");
@@ -81,8 +80,7 @@ public class AccountsManager : MonoBehaviour
 
                     if (existingAccountCredentials[2] == currentAccount[2])
                     {
-                        NetworkServerProcessing.Instance.SendMessageToClient($"Welcome Back, {existingAccountCredentials[1]}!", connectionID);
-                        NetworkServerProcessing.Instance.SendMessageToClient(Signifiers.successfulLoginSignifier, connectionID);
+                        NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.successfulLogin.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
                         Player player = new Player(existingAccountCredentials[1], connectionID);
                         LobbyManager.Instance.activePlayers.Add(player);
                         return;
@@ -90,6 +88,6 @@ public class AccountsManager : MonoBehaviour
                 }
             }
         }
-        NetworkServerProcessing.Instance.SendMessageToClient("Username/Password is incorrect or does not exist.", connectionID);
+        NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.failedLogin.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
     }
 }
