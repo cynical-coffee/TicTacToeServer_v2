@@ -1,3 +1,4 @@
+using UnityEditor.MemoryProfiler;
 using UnityEngine;
 
 public static class NetworkServerProcessing
@@ -24,13 +25,17 @@ public static class NetworkServerProcessing
         }
         else if (signifier == ClientToServerSignifiers.joinExistingRoom)
         {
-            LobbyManager.Instance.CreateGameRoom(msg, clientConnectionID);
+            LobbyManager.Instance.JoinExistingGameRoom(msg, clientConnectionID);
         }
-        else if (signifier == ServerToClientSignifiers.logOut)
+        else if (signifier == ClientToServerSignifiers.logOut)
         {
             LobbyManager.Instance.LogOut(clientConnectionID);
         }
-
+        else if (signifier == ClientToServerSignifiers.leaveGameRoom)
+        {
+            GameRoomManager.Instance.LeaveRoom(clientConnectionID);
+        }
+        
         //gameLogic.DoSomething();
     }
     public static void SendMessageToClient(string msg, int clientConnectionID, TransportPipeline pipeline)
@@ -49,6 +54,7 @@ public static class NetworkServerProcessing
     public static void DisconnectionEvent(int clientConnectionID)
     {
         Debug.Log("Client disconnection, ID == " + clientConnectionID);
+        //GameRoomManager.Instance.OnPlayerDisconnected(clientConnectionID);
     }
 
     #endregion
@@ -79,18 +85,23 @@ public static class ClientToServerSignifiers
     public const int RegisterAccount = 0;
     public const int LoginAccount = 1;
     public const int createGameRoom = 3;
-    public const int joinExistingRoom = 5;
+    public const int logOut = 4;
+    public const int joinExistingRoom = 5; 
+    public const int leaveGameRoom = 9;
 }
 
 public static class ServerToClientSignifiers
 {
     public const int successfulLogin = 2;
+    public const int createGameRoom = 3;
     public const int failedLogin = 5;
     public const int failedToCreateRoom = 6;
     public const int usernameTaken = 7;
     public const int gameRoomFull = 8;
-    public const int leaveGameRoom = 1;
-    public const int logOut = 4;
+    public const int leaveGameRoom = 9;
+    public const int joinGameRoomFailed = 10;
+    public const int startNewGame = 11;
+    public const int opponentUsername = 12;
 }
 
 #endregion

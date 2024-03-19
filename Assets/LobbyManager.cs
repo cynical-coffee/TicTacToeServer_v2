@@ -1,7 +1,8 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Player
+public class Player : MonoBehaviour
 {
     public string username;
     public int connection;
@@ -13,7 +14,7 @@ public class Player
     }
 }
 
-public class GameRoom
+public class GameRoom : MonoBehaviour
 {
     public string roomName;
     public List<Player> currentPlayers;
@@ -76,7 +77,7 @@ public class LobbyManager : MonoBehaviour
                     GameRoom gameRoom = new GameRoom(gameRoomName[1]);
                     gameRoom.currentPlayers.Add(player);
                     activeGameRooms.Add(gameRoom);
-                    NetworkServerProcessing.SendMessageToClient(ClientToServerSignifiers.createGameRoom.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
+                    NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.createGameRoom.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
                 }
                 else
                 {
@@ -104,6 +105,12 @@ public class LobbyManager : MonoBehaviour
                             if (gameRoom.currentPlayers.Count < 2)
                             {
                                 gameRoom.currentPlayers.Add(player);
+
+                                if (gameRoom.currentPlayers.Count == 2)
+                                {
+                                    GameRoomManager.Instance.SetUp(gameRoom);
+                                    GameRoomManager.Instance.StartNewGame(gameRoom);
+                                }
                             }
                             else
                             {
@@ -111,6 +118,11 @@ public class LobbyManager : MonoBehaviour
                             }
                         }
                     }
+                }
+                else
+                {
+                    NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.joinGameRoomFailed.ToString(),
+                        connectionID, TransportPipeline.ReliableAndInOrder);
                 }
             }
         }
@@ -123,7 +135,7 @@ public class LobbyManager : MonoBehaviour
             if (activePlayers[i].connection == connectionID)
             {
                 activePlayers.RemoveAt(i);
-                NetworkServerProcessing.SendMessageToClient(ServerToClientSignifiers.logOut.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
+                NetworkServerProcessing.SendMessageToClient(ClientToServerSignifiers.logOut.ToString(), connectionID, TransportPipeline.ReliableAndInOrder);
             }
         }
     }
